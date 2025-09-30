@@ -1,82 +1,92 @@
-// Smooth scrolling for navigation links
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
+const display = document.getElementById('display');
+const buttons = document.querySelectorAll('.btn');
 
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    });
-});
+let currentInput = '';
+let operator = null;
+let previousInput = null;
+let resetDisplay = false;
 
-// Form submission handling
-const contactForm = document.querySelector('.contact-form');
-if (contactForm) {
-    contactForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        // In a real application, you would send the form data to a server
-        alert('Thank you for your message! (This is a demo - form not actually submitted)');
-        this.reset();
-    });
+function calculate(a, b, op) {
+    a = parseFloat(a);
+    b = parseFloat(b);
+    switch (op) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/': return b === 0 ? 'Error' : a / b;
+        default: return b;
+    }
 }
 
-// Add scroll animations
-const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-};
+function updateDisplay(value) {
+    display.textContent = value;
+}
 
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            entry.target.style.opacity = '1';
-            entry.target.style.transform = 'translateY(0)';
+function clearAll() {
+    currentInput = '';
+    operator = null;
+    previousInput = null;
+    resetDisplay = false;
+    updateDisplay('0');
+}
+
+function inputNumber(num) {
+    if (resetDisplay) {
+        currentInput = num;
+        resetDisplay = false;
+    } else {
+        if (num === '.' && currentInput.includes('.')) return;
+        currentInput = currentInput === '0' && num !== '.' ? num : currentInput + num;
+    }
+    updateDisplay(currentInput);
+}
+
+function inputOperator(op) {
+    if (operator && !resetDisplay) {
+        const result = calculate(previousInput, currentInput, operator);
+        updateDisplay(result);
+        previousInput = result.toString();
+    } else {
+        previousInput = currentInput;
+    }
+    operator = op;
+    resetDisplay = true;
+}
+
+function inputEquals() {
+    if (!operator || resetDisplay) return;
+    const result = calculate(previousInput, currentInput, operator);
+    updateDisplay(result);
+    currentInput = result.toString();
+    operator = null;
+    previousInput = null;
+    resetDisplay = true;
+}
+
+buttons.forEach(button => {
+    button.addEventListener('click', () => {
+        const id = button.id;
+        if (button.classList.contains('number')) {
+            inputNumber(id === 'decimal' ? '.' : id);
+        } else if (button.classList.contains('operator')) {
+            inputOperator(button.textContent);
+        } else if (id === 'clear') {
+            clearAll();
+        } else if (id === 'equals') {
+            inputEquals();
         }
     });
-}, observerOptions);
-
-// Observe all sections
-document.querySelectorAll('.section').forEach(section => {
-    section.style.opacity = '0';
-    section.style.transform = 'translateY(30px)';
-    section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-    observer.observe(section);
 });
 
-// Add active class to navigation links on scroll
-const navLinks = document.querySelectorAll('.nav-links a');
-const sections = document.querySelectorAll('.section');
-
-window.addEventListener('scroll', () => {
-    let current = '';
-
-    sections.forEach(section => {
-        const sectionTop = section.offsetTop;
-        const sectionHeight = section.clientHeight;
-        if (pageYOffset >= sectionTop - sectionHeight / 3) {
-            current = section.getAttribute('id');
-        }
-    });
-
-    navLinks.forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('href').slice(1) === current) {
-            link.classList.add('active');
-        }
-    });
-});
-
-// Add hover effect to project cards
-document.querySelectorAll('.project-card').forEach(card => {
-    card.addEventListener('mouseenter', () => {
-        card.style.transform = 'translateY(-10px) scale(1.02)';
-    });
-
-    card.addEventListener('mouseleave', () => {
-        card.style.transform = 'translateY(0) scale(1)';
-    });
+document.addEventListener('keydown', (e) => {
+    if ((e.key >= '0' && e.key <= '9') || e.key === '.') {
+        inputNumber(e.key);
+    } else if (['+', '-', '*', '/'].includes(e.key)) {
+        inputOperator(e.key);
+    } else if (e.key === 'Enter' || e.key === '=') {
+        e.preventDefault();
+        inputEquals();
+    } else if (e.key === 'Escape') {
+        clearAll();
+    }
 });
